@@ -3,77 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Informe SINTRO</title>
+    <title>SINTRO Reporte</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #f4f4f4; margin: 0; padding: 10px; }
-        .logo-container { text-align: center; margin-bottom: 15px; }
-        .logo-container img { width: 120px; }
-        .card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
-        .nav-buttons { display: flex; gap: 10px; margin-bottom: 15px; }
-        button { flex: 1; padding: 12px; border: none; background: #007bff; color: white; border-radius: 5px; font-weight: bold; cursor: pointer; }
-        button.inactive { background: #ccc; }
-        select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 15px; }
-        #chart { width: 100%; height: 300px; }
+        /* ESTILOS FORZADOS PARA QUE SE VEA BIEN */
+        body { font-family: Arial, sans-serif; background: #eee; margin: 0; padding: 10px; }
+        .box { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px #ccc; margin-bottom: 20px; }
+        img { max-width: 100px; display: block; margin: 0 auto 10px; }
+        select { width: 100%; padding: 15px; font-size: 18px; border: 2px solid #007bff; border-radius: 5px; margin-bottom: 20px; }
+        .nav { display: flex; gap: 10px; margin-bottom: 20px; }
+        .nav button { flex: 1; padding: 15px; border: none; background: #007bff; color: white; border-radius: 5px; font-size: 16px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div class="logo-container">
+<div class="box">
     <img src="logo.png" alt="Logo">
-</div>
-
-<div class="card">
-    <div class="nav-buttons">
-        <button id="btnH" onclick="cambiar('historial')">Historial</button>
-        <button id="btnP" class="inactive" onclick="cambiar('pronostico')">Pronóstico</button>
+    <div class="nav">
+        <button onclick="document.getElementById('divH').style.display='block'; document.getElementById('divP').style.display='none';">Historial</button>
+        <button onclick="document.getElementById('divH').style.display='none'; document.getElementById('divP').style.display='block';">Pronóstico</button>
     </div>
 
-    <div id="seccionHistorial">
+    <div id="divH">
         <select id="yearSelect"></select>
-        <div id="chart"></div>
+        <div id="chart" style="width:100%; height:300px;"></div>
     </div>
 
-    <div id="seccionPronostico" style="display:none;">
-        <iframe src="https://www.meteored.com.ve/wcomp/widget_mapa_local/1-23847" width="100%" height="300" frameborder="0"></iframe>
+    <div id="divP" style="display:none;">
+        <iframe src="https://www.meteored.com.ve/wcomp/widget_mapa_local/1-23847" style="width:100%; height:400px; border:none;"></iframe>
     </div>
 </div>
 
 <script>
-    let datosGlobales = [];
-
-    // Cambiar pestañas
-    function cambiar(tipo) {
-        document.getElementById('seccionHistorial').style.display = (tipo === 'historial') ? 'block' : 'none';
-        document.getElementById('seccionPronostico').style.display = (tipo === 'pronostico') ? 'block' : 'none';
-        document.getElementById('btnH').className = (tipo === 'historial') ? '' : 'inactive';
-        document.getElementById('btnP').className = (tipo === 'pronostico') ? '' : 'inactive';
-    }
-
-    // Cargar datos
     Papa.parse("PREC_DOM_MIGUEL.csv", {
         download: true, header: true, delimiter: ";", dynamicTyping: true,
         complete: function(res) {
-            datosGlobales = res.data.filter(r => r.FECHA);
-            const years = [...new Set(datosGlobales.map(r => String(r.FECHA).substring(0,4)))].sort();
-            const select = document.getElementById('yearSelect');
-            years.forEach(y => select.innerHTML += `<option value="${y}">${y}</option>`);
+            let datos = res.data.filter(r => r.FECHA);
+            let years = [...new Set(datos.map(r => String(r.FECHA).substring(0,4)))].sort();
+            let sel = document.getElementById('yearSelect');
+            years.forEach(y => sel.innerHTML += `<option value="${y}">${y}</option>`);
             
-            select.onchange = actualizarGrafica;
-            actualizarGrafica();
+            sel.onchange = function() {
+                let y = sel.value;
+                let f = datos.filter(r => String(r.FECHA).substring(0,4) == y);
+                let m = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+                let v = m.map((_, i) => f.filter(r => parseInt(String(r.FECHA).substring(4,6)) == i+1).reduce((a,b) => a + (parseFloat(String(b.PRECTOTCORR).replace(',','.')) || 0), 0));
+                Plotly.newPlot('chart', [{x: m, y: v, type: 'bar'}], {margin:{t:10, l:40, r:10, b:30}});
+            };
+            sel.onchange();
         }
     });
-
-    function actualizarGrafica() {
-        const y = document.getElementById('yearSelect').value;
-        const filtrados = datosGlobales.filter(r => String(r.FECHA).substring(0,4) == y);
-        const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-        const valores = meses.map((_, i) => filtrados.filter(r => parseInt(String(r.FECHA).substring(4,6)) == i+1).reduce((a, b) => a + (parseFloat(String(b.PRECTOTCORR).replace(',', '.')) || 0), 0));
-        
-        Plotly.newPlot('chart', [{x: meses, y: valores, type: 'bar', marker: {color: '#28a745'}}], 
-        { margin: {t:20, l:40, r:10, b:30} });
-    }
 </script>
 </body>
 </html>
