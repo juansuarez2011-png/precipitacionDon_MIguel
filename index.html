@@ -3,57 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SINTRO Reporte</title>
+    <title>Reporte SINTRO</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        /* ESTILOS FORZADOS PARA QUE SE VEA BIEN */
-        body { font-family: Arial, sans-serif; background: #eee; margin: 0; padding: 10px; }
-        .box { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px #ccc; margin-bottom: 20px; }
-        img { max-width: 100px; display: block; margin: 0 auto 10px; }
-        select { width: 100%; padding: 15px; font-size: 18px; border: 2px solid #007bff; border-radius: 5px; margin-bottom: 20px; }
-        .nav { display: flex; gap: 10px; margin-bottom: 20px; }
-        .nav button { flex: 1; padding: 15px; border: none; background: #007bff; color: white; border-radius: 5px; font-size: 16px; cursor: pointer; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; }
+        
+        /* Barra superior con color para resaltar el logo */
+        .top-bar { background-color: #003366; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .top-bar img { height: 60px; }
+
+        .container { max-width: 800px; margin: 20px auto; padding: 0 15px; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        
+        select { width: 100%; padding: 15px; font-size: 16px; border: 2px solid #003366; border-radius: 10px; margin-bottom: 20px; background-color: #f9f9f9; }
+        
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .nav-tabs button { flex: 1; padding: 12px; border: none; background: #e0e0e0; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .nav-tabs button.active { background: #003366; color: white; }
+        
+        #chart { width: 100%; height: 350px; }
     </style>
 </head>
 <body>
 
-<div class="box">
-    <img src="logo.png" alt="Logo">
-    <div class="nav">
-        <button onclick="document.getElementById('divH').style.display='block'; document.getElementById('divP').style.display='none';">Historial</button>
-        <button onclick="document.getElementById('divH').style.display='none'; document.getElementById('divP').style.display='block';">Pronóstico</button>
-    </div>
+<div class="top-bar">
+    <img src="logo.png" alt="Logo SINTRO">
+</div>
 
-    <div id="divH">
+<div class="container">
+    <div class="card">
+        <label><strong>Seleccione el año de estudio:</strong></label>
         <select id="yearSelect"></select>
-        <div id="chart" style="width:100%; height:300px;"></div>
-    </div>
 
-    <div id="divP" style="display:none;">
-        <iframe src="https://www.meteored.com.ve/wcomp/widget_mapa_local/1-23847" style="width:100%; height:400px; border:none;"></iframe>
+        <div class="nav-tabs">
+            <button id="btnH" class="active" onclick="show('historial')">Historial</button>
+            <button id="btnP" onclick="show('pronostico')">Pronóstico</button>
+        </div>
+
+        <div id="seccionHistorial">
+            <div id="chart"></div>
+        </div>
+
+        <div id="seccionPronostico" style="display:none;">
+            <iframe src="https://www.meteored.com.ve/wcomp/widget_mapa_local/1-23847" style="width:100%; height:400px; border:none; border-radius:10px;"></iframe>
+        </div>
     </div>
 </div>
 
 <script>
+    let datos = [];
     Papa.parse("PREC_DOM_MIGUEL.csv", {
         download: true, header: true, delimiter: ";", dynamicTyping: true,
         complete: function(res) {
-            let datos = res.data.filter(r => r.FECHA);
+            datos = res.data.filter(r => r.FECHA);
+            // Extraer y listar TODOS los años
             let years = [...new Set(datos.map(r => String(r.FECHA).substring(0,4)))].sort();
             let sel = document.getElementById('yearSelect');
             years.forEach(y => sel.innerHTML += `<option value="${y}">${y}</option>`);
             
-            sel.onchange = function() {
-                let y = sel.value;
-                let f = datos.filter(r => String(r.FECHA).substring(0,4) == y);
-                let m = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-                let v = m.map((_, i) => f.filter(r => parseInt(String(r.FECHA).substring(4,6)) == i+1).reduce((a,b) => a + (parseFloat(String(b.PRECTOTCORR).replace(',','.')) || 0), 0));
-                Plotly.newPlot('chart', [{x: m, y: v, type: 'bar'}], {margin:{t:10, l:40, r:10, b:30}});
-            };
-            sel.onchange();
+            sel.onchange = render;
+            render();
         }
     });
+
+    function show(tab) {
+        document.getElementById('seccionHistorial').style.display = (tab === 'historial') ? 'block' : 'none';
+        document.getElementById('seccionPronostico').style.display = (tab === 'pronostico') ? 'block' : 'none';
+        document.getElementById('btnH').className = (tab === 'historial') ? 'active' : '';
+        document.getElementById('btnP').className = (tab === 'pronostico') ? 'active' : '';
+    }
+
+    function render() {
+        let y = document.getElementById('yearSelect').value;
+        let f = datos.filter(r => String(r.FECHA).substring(0,4) == y);
+        let m = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        let v = m.map((_, i) => f.filter(r => parseInt(String(r.FECHA).substring(4,6)) == i+1).reduce((a,b) => a + (parseFloat(String(b.PRECTOTCORR).replace(',','.')) || 0), 0));
+        
+        Plotly.newPlot('chart', [{x: m, y: v, type: 'bar', marker: {color: '#003366'}}], 
+        {title: 'Precipitación '+y+' (mm)', margin: {t:30, l:40, r:10, b:30}});
+    }
 </script>
 </body>
 </html>
