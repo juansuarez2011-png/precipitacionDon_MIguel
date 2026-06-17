@@ -3,41 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SINTRO - Reporte Meteorológico</title>
+    <title>SINTRO Dashboard</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 10px; }
-        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 15px; }
-        .logo { display: block; max-width: 120px; margin: 0 auto 15px; }
-        select { width: 100%; padding: 12px; font-size: 16px; border: 2px solid #00274d; border-radius: 8px; }
-        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
-        .btn { flex: 1; padding: 12px; border: none; background: #d1d9e6; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #00274d; color: white; margin: 0; padding: 20px; }
+        .dashboard { max-width: 900px; margin: auto; background: #ffffff; color: #333; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .logo { display: block; max-width: 150px; margin: 0 auto 20px; }
+        select { width: 100%; padding: 15px; border-radius: 10px; border: 2px solid #00274d; font-size: 16px; margin-bottom: 20px; background: #f8f9fa; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .btn { flex: 1; padding: 15px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; background: #e0e0e0; transition: 0.3s; }
         .btn.active { background: #00274d; color: white; }
-        #chart { width: 100%; height: 300px; }
-        iframe { width: 100%; height: 400px; border: none; border-radius: 8px; }
+        #chart { width: 100%; height: 350px; }
+        iframe { width: 100%; height: 500px; border: none; border-radius: 10px; }
     </style>
 </head>
 <body>
 
-<img src="logo.png" class="logo" alt="Logo SINTRO">
+<div class="dashboard">
+    <img src="logo.png" class="logo" alt="Logo SINTRO">
 
-<div class="card">
     <label><strong>Seleccione Año de Estudio:</strong></label>
     <select id="yearSelect">
         <option value="TODOS">TODOS LOS AÑOS (Promedio Histórico)</option>
     </select>
 
-    <div class="btn-group">
+    <div class="tabs">
         <button class="btn active" id="btnH" onclick="toggle('historial')">Análisis Histórico</button>
         <button class="btn" id="btnP" onclick="toggle('pronostico')">Pronóstico Ventusky</button>
     </div>
 
-    <div id="historial" style="display:block; margin-top:20px;">
+    <div id="historial">
         <div id="chart"></div>
     </div>
 
-    <div id="pronostico" style="display:none; margin-top:20px;">
+    <div id="pronostico" style="display:none;">
         <iframe src="https://www.ventusky.com/es/caracas"></iframe>
     </div>
 </div>
@@ -69,8 +69,14 @@
         let m = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
         let v = m.map((_, i) => f.filter(r => parseInt(String(r.FECHA).substring(4,6)) == i+1).reduce((a,b) => a + (parseFloat(String(b.PRECTOTCORR).replace(',','.')) || 0), 0) / (y === "TODOS" ? 27 : 1));
         
-        Plotly.newPlot('chart', [{x: m, y: v, type: 'bar', marker: {color: '#00274d'}}], 
-        {title: 'Precipitación ' + y, margin: {t:30, l:40, r:10, b:40}, autosize: true});
+        // Estilo de Área con Gradiente
+        Plotly.newPlot('chart', [{
+            x: m, y: v, type: 'scatter', fill: 'tozeroy', mode: 'lines+markers',
+            line: {color: '#00274d', width: 3}, fillcolor: 'rgba(0, 39, 77, 0.2)'
+        }], {
+            title: 'Tendencia de Precipitación: ' + y, 
+            margin: {t:40, l:50, r:20, b:40}, autosize: true
+        });
     }
 </script>
 </body>
