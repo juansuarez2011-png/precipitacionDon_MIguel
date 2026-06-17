@@ -7,72 +7,72 @@
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #eef2f3; margin: 0; padding: 0; }
-        
-        /* Encabezado */
-        .header { background: #fff; padding: 20px; display: flex; align-items: center; border-bottom: 3px solid #0056b3; }
-        .header img { height: 60px; margin-right: 20px; }
-        
-        /* Contenedor Principal (Grid) */
-        .wrapper { display: grid; grid-template-columns: 1fr 350px; gap: 20px; padding: 20px; }
-        @media (max-width: 800px) { .wrapper { grid-template-columns: 1fr; } }
-        
-        /* Tarjetas */
-        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        
-        /* Estilos de elementos */
-        .plot { width: 100%; height: 400px; }
-        select, button { width: 100%; padding: 15px; margin-top: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; }
-        button { background: #0056b3; color: white; border: none; cursor: pointer; }
+        body { font-family: sans-serif; background: #f4f4f4; margin: 0; padding: 10px; }
+        .logo-container { text-align: center; margin-bottom: 15px; }
+        .logo-container img { width: 120px; }
+        .card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        .nav-buttons { display: flex; gap: 10px; margin-bottom: 15px; }
+        button { flex: 1; padding: 12px; border: none; background: #007bff; color: white; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        button.inactive { background: #ccc; }
+        select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 15px; }
+        #chart { width: 100%; height: 300px; }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <img src="logo.png" alt="Logo SINTRO">
-    <h1>Análisis Meteorológico SINTRO</h1>
+<div class="logo-container">
+    <img src="logo.png" alt="Logo">
 </div>
 
-<div class="wrapper">
-    <div class="card">
-        <h3>Historial de Precipitación (2000-2026)</h3>
-        <div id="chart" class="plot"></div>
+<div class="card">
+    <div class="nav-buttons">
+        <button id="btnH" onclick="cambiar('historial')">Historial</button>
+        <button id="btnP" class="inactive" onclick="cambiar('pronostico')">Pronóstico</button>
     </div>
 
-    <div class="card">
-        <h3>Panel de Control</h3>
+    <div id="seccionHistorial">
         <select id="yearSelect"></select>
-        <button onclick="generarGrafica()">Visualizar Datos</button>
-        <hr style="margin: 20px 0;">
-        <h3>Pronóstico de Lluvia</h3>
-        <iframe src="https://www.meteored.com.ve/wcomp/widget_mapa_local/1-23847" style="width:100%; height:200px; border:none;"></iframe>
+        <div id="chart"></div>
+    </div>
+
+    <div id="seccionPronostico" style="display:none;">
+        <iframe src="https://www.meteored.com.ve/wcomp/widget_mapa_local/1-23847" width="100%" height="300" frameborder="0"></iframe>
     </div>
 </div>
 
 <script>
-    let datos = [];
+    let datosGlobales = [];
+
+    // Cambiar pestañas
+    function cambiar(tipo) {
+        document.getElementById('seccionHistorial').style.display = (tipo === 'historial') ? 'block' : 'none';
+        document.getElementById('seccionPronostico').style.display = (tipo === 'pronostico') ? 'block' : 'none';
+        document.getElementById('btnH').className = (tipo === 'historial') ? '' : 'inactive';
+        document.getElementById('btnP').className = (tipo === 'pronostico') ? '' : 'inactive';
+    }
+
+    // Cargar datos
     Papa.parse("PREC_DOM_MIGUEL.csv", {
-        download: true, header: true, delimiter: ";",
-        complete: function(results) {
-            datos = results.data.map(r => ({
-                fecha: String(r.FECHA),
-                val: parseFloat(String(r.PRECTOTCORR).replace(',', '.')) || 0
-            }));
-            const years = [...new Set(datos.map(r => r.fecha.substring(0,4)))].filter(y => y.length === 4).sort();
+        download: true, header: true, delimiter: ";", dynamicTyping: true,
+        complete: function(res) {
+            datosGlobales = res.data.filter(r => r.FECHA);
+            const years = [...new Set(datosGlobales.map(r => String(r.FECHA).substring(0,4)))].sort();
             const select = document.getElementById('yearSelect');
             years.forEach(y => select.innerHTML += `<option value="${y}">${y}</option>`);
-            generarGrafica();
+            
+            select.onchange = actualizarGrafica;
+            actualizarGrafica();
         }
     });
 
-    function generarGrafica() {
+    function actualizarGrafica() {
         const y = document.getElementById('yearSelect').value;
-        const filtrados = datos.filter(r => r.fecha.substring(0,4) == y);
+        const filtrados = datosGlobales.filter(r => String(r.FECHA).substring(0,4) == y);
         const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-        const valores = meses.map((_, i) => filtrados.filter(r => parseInt(r.fecha.substring(4,6)) == i+1).reduce((a,b) => a + b.val, 0) / 30);
+        const valores = meses.map((_, i) => filtrados.filter(r => parseInt(String(r.FECHA).substring(4,6)) == i+1).reduce((a, b) => a + (parseFloat(String(b.PRECTOTCORR).replace(',', '.')) || 0), 0));
         
-        Plotly.newPlot('chart', [{ x: meses, y: valores, type: 'bar', marker: {color: '#0056b3'} }], 
-        { title: 'Precipitación promedio ' + y + ' (mm)', margin: {t:40, l:50, r:20, b:40} });
+        Plotly.newPlot('chart', [{x: meses, y: valores, type: 'bar', marker: {color: '#28a745'}}], 
+        { margin: {t:20, l:40, r:10, b:30} });
     }
 </script>
 </body>
