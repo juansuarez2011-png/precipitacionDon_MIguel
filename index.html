@@ -2,52 +2,41 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reporte SINTRO</title>
+    <title>Reporte Técnico SINTRO</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; }
-        
-        /* Barra superior con color para resaltar el logo */
-        .top-bar { background-color: #003366; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .top-bar img { height: 60px; }
-
-        .container { max-width: 800px; margin: 20px auto; padding: 0 15px; }
-        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        
-        select { width: 100%; padding: 15px; font-size: 16px; border: 2px solid #003366; border-radius: 10px; margin-bottom: 20px; background-color: #f9f9f9; }
-        
-        .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .nav-tabs button { flex: 1; padding: 12px; border: none; background: #e0e0e0; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .nav-tabs button.active { background: #003366; color: white; }
-        
-        #chart { width: 100%; height: 350px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #eef2f7; margin: 0; padding: 20px; }
+        .top-banner { background: #00274d; padding: 20px; border-radius: 15px; text-align: center; color: white; margin-bottom: 20px; }
+        .top-banner img { height: 70px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; }
+        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+        select { width: 100%; padding: 15px; border-radius: 10px; border: 2px solid #00274d; font-size: 16px; margin-bottom: 20px; }
+        .tab-btn { padding: 15px; width: 48%; border: none; background: #d1d9e6; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        .tab-btn.active { background: #00274d; color: white; }
     </style>
 </head>
 <body>
 
-<div class="top-bar">
-    <img src="logo.png" alt="Logo SINTRO">
+<div class="top-banner">
+    <img src="logo.png" alt="SINTRO">
+    <h2>Análisis Avanzado de Precipitación</h2>
 </div>
 
-<div class="container">
+<div class="grid">
     <div class="card">
-        <label><strong>Seleccione el año de estudio:</strong></label>
-        <select id="yearSelect"></select>
+        <h3>Control de Datos</h3>
+        <select id="yearSelect">
+            <option value="TODOS">--- TODOS LOS AÑOS (Promedio Histórico) ---</option>
+        </select>
+        <div class="tab-btn active" id="btnH" onclick="show('historial')">Análisis Histórico</div>
+        <div class="tab-btn" id="btnP" onclick="show('pronostico')">Pronóstico 45D</div>
+        <div id="chart" style="width:100%; height:300px; margin-top:20px;"></div>
+    </div>
 
-        <div class="nav-tabs">
-            <button id="btnH" class="active" onclick="show('historial')">Historial</button>
-            <button id="btnP" onclick="show('pronostico')">Pronóstico</button>
-        </div>
-
-        <div id="seccionHistorial">
-            <div id="chart"></div>
-        </div>
-
-        <div id="seccionPronostico" style="display:none;">
-            <iframe src="https://www.meteored.com.ve/wcomp/widget_mapa_local/1-23847" style="width:100%; height:400px; border:none; border-radius:10px;"></iframe>
-        </div>
+    <div class="card" id="seccionPronostico" style="display:none;">
+        <h3>Widget Meteorológico</h3>
+        <iframe src="https://www.meteored.com.ve/wcomp/widget_mapa_local/1-23847" style="width:100%; height:400px; border:none;"></iframe>
     </div>
 </div>
 
@@ -57,31 +46,31 @@
         download: true, header: true, delimiter: ";", dynamicTyping: true,
         complete: function(res) {
             datos = res.data.filter(r => r.FECHA);
-            // Extraer y listar TODOS los años
             let years = [...new Set(datos.map(r => String(r.FECHA).substring(0,4)))].sort();
             let sel = document.getElementById('yearSelect');
             years.forEach(y => sel.innerHTML += `<option value="${y}">${y}</option>`);
-            
             sel.onchange = render;
             render();
         }
     });
 
-    function show(tab) {
-        document.getElementById('seccionHistorial').style.display = (tab === 'historial') ? 'block' : 'none';
-        document.getElementById('seccionPronostico').style.display = (tab === 'pronostico') ? 'block' : 'none';
-        document.getElementById('btnH').className = (tab === 'historial') ? 'active' : '';
-        document.getElementById('btnP').className = (tab === 'pronostico') ? 'active' : '';
+    function show(t) {
+        document.getElementById('chart').style.display = (t === 'historial') ? 'block' : 'none';
+        document.getElementById('seccionPronostico').style.display = (t === 'pronostico') ? 'block' : 'none';
+        document.getElementById('btnH').className = (t === 'historial') ? 'tab-btn active' : 'tab-btn';
+        document.getElementById('btnP').className = (t === 'pronostico') ? 'tab-btn active' : 'tab-btn';
     }
 
     function render() {
         let y = document.getElementById('yearSelect').value;
-        let f = datos.filter(r => String(r.FECHA).substring(0,4) == y);
+        let f = (y === "TODOS") ? datos : datos.filter(r => String(r.FECHA).substring(0,4) == y);
         let m = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-        let v = m.map((_, i) => f.filter(r => parseInt(String(r.FECHA).substring(4,6)) == i+1).reduce((a,b) => a + (parseFloat(String(b.PRECTOTCORR).replace(',','.')) || 0), 0));
-        
-        Plotly.newPlot('chart', [{x: m, y: v, type: 'bar', marker: {color: '#003366'}}], 
-        {title: 'Precipitación '+y+' (mm)', margin: {t:30, l:40, r:10, b:30}});
+        let v = m.map((_, i) => {
+            let filtrado = f.filter(r => parseInt(String(r.FECHA).substring(4,6)) == i+1);
+            return filtrado.reduce((a,b) => a + (parseFloat(String(b.PRECTOTCORR).replace(',','.')) || 0), 0) / (y === "TODOS" ? 27 : 1);
+        });
+        Plotly.newPlot('chart', [{x: m, y: v, type: 'bar', marker: {color: '#00274d', line: {width: 2}}}], 
+        {title: 'Precipitación ' + y, margin: {t:30, l:40, r:10, b:30}});
     }
 </script>
 </body>
